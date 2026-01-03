@@ -3,7 +3,7 @@ set -euo pipefail
 
 rpm_url="https://nix-community.github.io/nix-installers/nix/x86_64/nix-multi-user-2.24.10.rpm"
 
-install -d /usr/share/nix-store /var/lib/nix-store /var/cache/nix-store /nix
+install -d /usr/share/nix-store /nix
 
 # Avoid systemd calls during RPM %post in the image build environment.
 export SYSTEMD_OFFLINE=1
