@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "::group:: Install Nix"
 rpm_url="https://nix-community.github.io/nix-installers/nix/x86_64/nix-multi-user-2.24.10.rpm"
+
+rsync -arvKl /ctx/system_files/nix/ /
 
 install -d /usr/share/nix-store /nix
 
@@ -16,9 +19,10 @@ mkdir -p /var/roothome/.nix-defexpr
 dnf install -y --nogpgcheck "$rpm_url"
 
 # Clean up the workaround directory.
-# rm -rf /var/roothome/.nix-defexpr
+rm -rf /var/roothome/.nix-defexpr
 # Clean up nix channels
-# rm -r /var/roothome/.nix-channels
+rm -rf /var/roothome/.nix-channels
+rm -rf /var/roothome/.nix-profile
 
 # Move the pre-populated store out of /nix so it can serve as the immutable lowerdir.
 if compgen -G "/nix/*" >/dev/null; then
@@ -27,3 +31,6 @@ fi
 
 # The RPM %post handles sysusers/tmpfiles; if we ran with SYSTEMD_OFFLINE the
 # post scripts are still executed, so no extra calls are needed here.
+
+systemctl enable nix-overlay.service
+echo "::endgroup::"
