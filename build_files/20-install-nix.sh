@@ -29,11 +29,13 @@ rm -rf \
 
 # Move the pre-populated store out of /nix so it can serve as the immutable lowerdir.
 if compgen -G "/nix/*" >/dev/null; then
+  restorecon -FR /nix
   mv /nix/* /usr/share/nix-store/
 fi
 
 # The RPM %post handles sysusers/tmpfiles; if we ran with SYSTEMD_OFFLINE the
 # post scripts are still executed, so no extra calls are needed here.
 
-systemctl enable nix-overlay.service
+systemctl enable nix-overlay.service nix-selinux.service
+
 echo "::endgroup::"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Load Nix SELinux policy module
+DefaultDependencies=no
+Before=nix-daemon.service nix-daemon.socket nix-overlay.service
+After=local-fs.target
+ConditionSecurity=selinux
+ConditionPathExists=/usr/share/selinux/packages/nix.pp
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/semodule -vi /usr/share/selinux/packages/nix.pp
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
