@@ -18,11 +18,14 @@ mkdir -p /var/roothome/.nix-defexpr
 # Install the RPM; allow missing GPG key since we fetch directly by URL.
 dnf install -y --nogpgcheck "$rpm_url"
 
-# Clean up the workaround directory.
-rm -rf /var/roothome/.nix-defexpr
-# Clean up nix channels
-rm -rf /var/roothome/.nix-channels
-rm -rf /var/roothome/.nix-profile
+# Clean up nix stuff
+rm -rf \
+  /var/roothome/.nix-profile \
+  /var/roothome/.nix-channels \
+  /var/roothome/.nix-defexpr \
+  /root/.nix-profile \
+  /root/.nix-channels \
+  /root/.nix-defexpr
 
 # Move the pre-populated store out of /nix so it can serve as the immutable lowerdir.
 if compgen -G "/nix/*" >/dev/null; then
