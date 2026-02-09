@@ -1,41 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "::group:: Install Nix"
-rpm_url="https://nix-community.github.io/nix-installers/nix/x86_64/nix-multi-user-2.24.10.rpm"
+echo "::group:: Install Nix (Fedora Package)"
 
+# Copy custom systemd units and scripts
 rsync -arvKl /ctx/system_files/nix/ /
+chmod +x /usr/bin/mount-nix.sh
 
-install -d /usr/share/nix-store /nix
+# Create persistent store directory (content copied after dnf install)
+install -d /var/lib/nix-store
 
-# Avoid systemd calls during RPM %post in the image build environment.
-export SYSTEMD_OFFLINE=1
+# Install official Fedora Nix package (2.31.3, CVE-fixed)
+dnf install -y nix nix-daemon
 
-# Pre-create this so the %post scriptlet skips the /root setup block.
-# /root is a symlink to var/roothome on ostree systems, so create the real target.
-mkdir -p /var/roothome/.nix-defexpr
-
-# Install the RPM; allow missing GPG key since we fetch directly by URL.
-dnf install -y --nogpgcheck "$rpm_url"
-
-# Clean up nix stuff
-rm -rf \
-  /var/roothome/.nix-profile \
-  /var/roothome/.nix-channels \
-  /var/roothome/.nix-defexpr \
-  /root/.nix-profile \
-  /root/.nix-channels \
-  /root/.nix-defexpr
-
-# Move the pre-populated store out of /nix so it can serve as the immutable lowerdir.
+# Move Fedora's /nix content to persistent location
+# This will be bind-mounted back at runtime
 if compgen -G "/nix/*" >/dev/null; then
-  restorecon -FR /nix
-  mv /nix/* /usr/share/nix-store/
+    echo "Moving /nix content to /var/lib/nix-store..."
+    rsync -aH /nix/ /var/lib/nix-store/
+    rm -rf /nix/*
 fi
 
-# The RPM %post handles sysusers/tmpfiles; if we ran with SYSTEMD_OFFLINE the
-# post scripts are still executed, so no extra calls are needed here.
+# Build and install SELinux policy (Fedora's nix package doesn't include one)
+echo "Building SELinux policy for Nix..."
+dnf install -y selinux-policy-devel
+cp /ctx/build_files/selinux/nix.te /ctx/build_files/selinux/nix.fc /tmp/
+pushd /tmp
+checkmodule -M -m -o nix.mod nix.te
+semodule_package -o nix.pp -m nix.mod -f nix.fc
+install -D -m 644 nix.pp /usr/share/selinux/packages/nix.pp
 
-systemctl enable nix-overlay.service nix-selinux.service
+# Precompute CIL hash so nix-selinux.service can skip loading if already installed
+/usr/libexec/selinux/hll/pp nix.pp | sha256sum | cut -d' ' -f1 \
+    | install -D -m 644 /dev/stdin /usr/share/nix/selinux-cil.sha256
+popd
+
+# Clean up selinux-policy-devel artifacts
+rm -rf /var/lib/sepolgen
+
+
+# Add drop-in to ensure nix-daemon.socket waits for our mount
+mkdir -p /usr/lib/systemd/system/nix-daemon.socket.d
+cat > /usr/lib/systemd/system/nix-daemon.socket.d/10-after-mount.conf << 'EOF'
+[Unit]
+After=nix-mount.service
+Requires=nix-mount.service
+EOF
+
+# Enable services
+systemctl enable nix-mount.service nix-daemon.socket nix-selinux.service
 
 echo "::endgroup::"

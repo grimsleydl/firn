@@ -1,15 +1,16 @@
 [Unit]
 Description=Load Nix SELinux policy module
-DefaultDependencies=no
-Before=nix-daemon.service nix-daemon.socket nix-overlay.service
-After=local-fs.target
 ConditionSecurity=selinux
 ConditionPathExists=/usr/share/selinux/packages/nix.pp
+DefaultDependencies=no
+After=local-fs.target selinux-policy-targeted.service
+Before=nix-mount.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/semodule -vi /usr/share/selinux/packages/nix.pp
+ExecCondition=/bin/bash -c 'expected=$(< /usr/share/nix/selinux-cil.sha256); installed=$(semodule -l -m | grep "^nix " | cut -d: -f2); [ "$expected" != "$installed" ]'
+ExecStart=/usr/sbin/semodule -i /usr/share/selinux/packages/nix.pp
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target
