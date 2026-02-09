@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Nix SELinux relabel weekly
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=30m
+Persistent=true
+Unit=nix-relabel.service
+
+[Install]
+WantedBy=timers.target

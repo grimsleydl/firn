@@ -1,0 +1,17 @@
+[Unit]
+Description=Relabel /nix SELinux contexts (background)
+After=multi-user.target nix-mount.service
+ConditionSecurity=selinux
+ConditionPathExists=/nix
+
+[Service]
+Type=oneshot
+# Low priority - won't slow down system
+Nice=19
+IOSchedulingClass=idle
+# Full recursive relabel, exclude hardlink farm, show progress, 2 threads
+ExecStart=/usr/sbin/restorecon -R -p -T 2 -e /nix/store/.links /nix
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
