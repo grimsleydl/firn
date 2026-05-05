@@ -10,7 +10,7 @@ chmod +x /usr/bin/mount-nix.sh
 # Create persistent store directory (content copied after dnf install)
 install -d /var/lib/nix-store
 
-# Install official Fedora Nix package (2.31.3, CVE-fixed)
+# Install official Fedora Nix package
 dnf install -y nix nix-daemon
 
 # Move Fedora's /nix content to persistent location
